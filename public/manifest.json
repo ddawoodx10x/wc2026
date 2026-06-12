@@ -1,0 +1,26 @@
+{
+  "name": "WC 2026 – The Lads",
+  "short_name": "WC 2026",
+  "description": "World Cup 2026 private prediction game",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d1b3e",
+  "theme_color": "#0d1b3e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "games"],
+  "screenshots": []
+}
