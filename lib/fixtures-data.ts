@@ -8,7 +8,7 @@ export const FIXTURES_DATA = [
   {match_number:54,stage:'Group Stage',group:'A',home_team:'South Africa',away_team:'South Korea',home_flag:'🇿🇦',away_flag:'🇰🇷',kickoff_utc:'2026-06-25T04:00:00+03:00',venue:'Estadio BBVA',city:'Monterrey'},
   // GROUP B: Canada, Bosnia-Herzegovina, Qatar, Switzerland
   {match_number:3,stage:'Group Stage',group:'B',home_team:'Canada',away_team:'Bosnia-Herzegovina',home_flag:'🇨🇦',away_flag:'🇧🇦',kickoff_utc:'2026-06-12T22:00:00+03:00',venue:'BMO Field',city:'Toronto'},
-  {match_number:4,stage:'Group Stage',group:'B',home_team:'Qatar',away_team:'Switzerland',home_flag:'🇶🇦',away_flag:'🇨🇭',kickoff_utc:'2026-06-13T04:00:00+03:00',venue:"Levi's Stadium",city:'San Francisco'},
+  {match_number:4,stage:'Group Stage',group:'B',home_team:'Qatar',away_team:'Switzerland',home_flag:'🇶🇦',away_flag:'🇨🇭',kickoff_utc:'2026-06-13T22:00:00+03:00',venue:"Levi's Stadium",city:'San Francisco'},
   {match_number:26,stage:'Group Stage',group:'B',home_team:'Switzerland',away_team:'Bosnia-Herzegovina',home_flag:'🇨🇭',away_flag:'🇧🇦',kickoff_utc:'2026-06-18T22:00:00+03:00',venue:'SoFi Stadium',city:'Los Angeles'},
   {match_number:27,stage:'Group Stage',group:'B',home_team:'Canada',away_team:'Qatar',home_flag:'🇨🇦',away_flag:'🇶🇦',kickoff_utc:'2026-06-19T01:00:00+03:00',venue:'BC Place',city:'Vancouver'},
   {match_number:49,stage:'Group Stage',group:'B',home_team:'Switzerland',away_team:'Canada',home_flag:'🇨🇭',away_flag:'🇨🇦',kickoff_utc:'2026-06-24T22:00:00+03:00',venue:'BC Place',city:'Vancouver'},
@@ -132,6 +132,9 @@ export const USERS_LIST = [
   { name: 'Mloky',    emoji: '⚡' },
   { name: 'Abo Tareq',emoji: '🦊' },
   { name: 'Abo 9afwa',emoji: '🌟' },
+  { name: 'راشد',          emoji: '🐆' },
+  { name: 'المهندس نظير',  emoji: '🔧' },
+  { name: 'ابو الفرس',     emoji: '🐎' },
 ];
 
 export function calcPoints(predH: number, predA: number, realH: number, realA: number): number {
