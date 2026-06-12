@@ -135,6 +135,13 @@ export const USERS_LIST = [
   { name: 'راشد',          emoji: '🐆' },
   { name: 'المهندس نظير',  emoji: '🔧' },
   { name: 'ابو الفرس',     emoji: '🐎' },
+  { name: 'Abu Faisal',     emoji: '🦁' },
+  { name: 'Abo3tb',         emoji: '🦅' },
+  { name: 'Brg',            emoji: '⚡' },
+  { name: 'yasertash',      emoji: '🔥' },
+  { name: 'wawa',           emoji: '🌊' },
+  { name: 'Mana',           emoji: '🏔️' },
+  { name: 'Abu 3meer',      emoji: '🦊' },
 ];
 
 export function calcPoints(predH: number, predA: number, realH: number, realA: number): number {
