@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Nav } from '@/components/Nav';
-import { USERS_LIST, calcPoints, fmtKickoff, isKickedOff } from '@/lib/fixtures-data';
+import { calcPoints, isKickedOff } from '@/lib/fixtures-data';
 
 interface Fx{id:string;match_number:number;stage:string;group?:string;home_team:string;away_team:string;home_flag:string;away_flag:string;kickoff_utc:string;status:string;home_score?:number;away_score?:number;}
 interface Pred{id:string;fixture_id:string;home_score:number;away_score:number;points?:number;}
@@ -23,7 +23,6 @@ export default function PredictionsPage() {
   const router = useRouter();
   const [fxs, setFxs] = useState<Fx[]>([]);
   const [preds, setPreds] = useState<Record<string,Pred>>({});
-  const [allPreds, setAllPreds] = useState<any[]>([]);
   const [tab, setTab] = useState<'upcoming'|'picks'|'results'>('upcoming');
   const [drafts, setDrafts] = useState<Record<string,{h:string;a:string}>>({});
   const [saving, setSaving] = useState<string|null>(null);
@@ -38,11 +37,10 @@ export default function PredictionsPage() {
 
   const load = useCallback(async () => {
     if (!user) return;
-    const [fxR, prR, allR] = await Promise.all([fetch('/api/fixtures'),fetch(`/api/predictions?userId=${user.id}`),fetch('/api/predictions')]);
-    const [fxD, prD, allD] = await Promise.all([fxR.json(), prR.json(), allR.json()]);
+    const [fxR, prR] = await Promise.all([fetch('/api/fixtures'), fetch(`/api/predictions?userId=${user.id}`)]);
+    const [fxD, prD] = await Promise.all([fxR.json(), prR.json()]);
     if (fxD.fixtures) setFxs(fxD.fixtures);
     if (prD.predictions) { const m: Record<string,Pred> = {}; prD.predictions.forEach((p:any) => { m[p.fixture_id] = p; }); setPreds(m); }
-    if (allD.predictions) setAllPreds(allD.predictions);
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
@@ -138,7 +136,6 @@ export default function PredictionsPage() {
           const badge=pts===3?<span className="tag tex">⚡ Exact +3</span>:pts===2?<span className="tag tok">✅ +2</span>:pts===1&&sc?<span className="tag twrong">❌ +1</span>:!lk?<span style={{fontSize:11,color:'#4ade80',fontWeight:700}}>Open ✏️</span>:<span style={{fontSize:11,color:'#555'}}>🔒 Locked</span>;
           const cd=!lk?countdown(f.kickoff_utc):null;
           const under1h=cd&&!cd.includes('d')&&(!cd.includes('h')||cd.startsWith('0h'));
-          const allForFx = tab==='results' ? allPreds.filter(p=>p.fixture_id===f.id) : [];
           return (
             <div key={f.id} style={{background:'rgba(255,255,255,0.045)',border:'1px solid rgba(255,255,255,0.08)',borderLeft:`3px solid ${border}`,borderRadius:16,padding:'14px 16px',marginBottom:11}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
@@ -149,14 +146,19 @@ export default function PredictionsPage() {
                 {badge}
               </div>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}><span style={{fontSize:26}}>{f.home_flag}</span><span style={{fontWeight:700,fontSize:12,textAlign:'center'}}>{f.home_team}</span></div>
+                <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
+                  <span style={{fontSize:26}}>{f.home_flag}</span>
+                  <span style={{fontWeight:700,fontSize:12,textAlign:'center'}}>{f.home_team}</span>
+                </div>
                 <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,minWidth:110}}>
                   {sc&&<div style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:700}}>FINAL: {f.home_score}–{f.away_score}</div>}
-                  {lk?(pred?<div style={{display:'flex',alignItems:'center',gap:6}}>
-                    <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.home_score}</div>
-                    <span style={{color:'rgba(255,255,255,0.3)',fontWeight:700}}>–</span>
-                    <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.away_score}</div>
-                  </div>:<span style={{fontSize:12,color:'#555',fontStyle:'italic'}}>No pick</span>):(
+                  {lk?(pred?
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.home_score}</div>
+                      <span style={{color:'rgba(255,255,255,0.3)',fontWeight:700}}>–</span>
+                      <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.away_score}</div>
+                    </div>
+                  :<span style={{fontSize:12,color:'#555',fontStyle:'italic'}}>No pick</span>):(
                     <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:7}}>
                       <div style={{display:'flex',alignItems:'center',gap:7}}>
                         <input type="number" min="0" max="20" className="score-box" value={drafts[f.id]?.h??(pred?String(pred.home_score):'')} placeholder="0" onChange={e=>setDrafts(p=>({...p,[f.id]:{...p[f.id],h:e.target.value}}))} onKeyDown={e=>e.key==='Enter'&&savePred(f.id)}/>
@@ -167,32 +169,16 @@ export default function PredictionsPage() {
                     </div>
                   )}
                 </div>
-                <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}><span style={{fontSize:26}}>{f.away_flag}</span><span style={{fontWeight:700,fontSize:12,textAlign:'center'}}>{f.away_team}</span></div>
+                <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
+                  <span style={{fontSize:26}}>{f.away_flag}</span>
+                  <span style={{fontWeight:700,fontSize:12,textAlign:'center'}}>{f.away_team}</span>
+                </div>
               </div>
               {sc&&pts!==null&&(
                 <div style={{marginTop:10,textAlign:'center',padding:'8px 12px',borderRadius:10,background:pts===3?'rgba(245,200,66,0.1)':pts===2?'rgba(34,197,94,0.08)':'rgba(255,255,255,0.04)',border:`1px solid ${pts===3?'rgba(245,200,66,0.2)':pts===2?'rgba(34,197,94,0.15)':'rgba(255,255,255,0.06)'}`}}>
                   <span style={{fontSize:14,fontWeight:800,color:pts===3?'#fde68a':pts===2?'#4ade80':'rgba(255,255,255,0.4)'}}>
                     {pts===3?'🎉 Exact score! +3 pts':pts===2?'👍 Correct outcome! +2 pts':'😬 Wrong prediction +1 pt'}
                   </span>
-                </div>
-              )}
-              {tab==='results'&&sc&&allForFx.length>0&&(
-                <div style={{marginTop:10,borderTop:'1px solid rgba(255,255,255,0.06)',paddingTop:10}}>
-                  <div style={{fontSize:10,color:'rgba(255,255,255,0.28)',fontWeight:700,textTransform:'uppercase',letterSpacing:.6,marginBottom:7}}>The Lads Picks</div>
-                  {USERS_LIST.map(ul=>{
-                    const up=allForFx.find((p:any)=>p.user?.username===ul.name);
-                    const pp=up?calcPoints(up.home_score,up.away_score,f.home_score!,f.away_score!):null;
-                    const pc=pp===3?'#fde68a':pp===2?'#4ade80':pp===1?'rgba(255,255,255,0.35)':'#444';
-                    const isMe=ul.name===user.username;
-                    return (
-                      <div key={ul.name} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 8px',borderRadius:9,background:isMe?'rgba(255,255,255,0.07)':'transparent',marginBottom:2}}>
-                        <span style={{fontSize:15}}>{ul.emoji}</span>
-                        <span style={{fontSize:12,fontWeight:isMe?800:400,color:isMe?'white':'rgba(255,255,255,0.6)',flex:1}}>{ul.name}{isMe?' (you)':''}</span>
-                        <span style={{fontSize:12,color:'rgba(255,255,255,0.45)',marginRight:4}}>{up?`${up.home_score}–${up.away_score}`:'—'}</span>
-                        <span style={{fontSize:12,fontWeight:900,color:pc,minWidth:28,textAlign:'right'}}>{up?(pp!==null?`+${pp}`:'?'):'0'}</span>
-                      </div>
-                    );
-                  })}
                 </div>
               )}
             </div>
