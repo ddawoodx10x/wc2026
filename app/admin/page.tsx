@@ -99,7 +99,7 @@ export default function AdminPage() {
                   <input type="number" min="0" className="score-box" style={{width:56}} placeholder={f.home_score!==null&&f.home_score!==undefined?String(f.home_score):'0'} value={scores[f.id]?.h??(f.home_score!==null&&f.home_score!==undefined?String(f.home_score):'')} onChange={e=>setScores(p=>({...p,[f.id]:{...p[f.id],h:e.target.value}}))}/>
                   <span style={{color:'rgba(255,255,255,0.3)',fontWeight:900}}>–</span>
                   <input type="number" min="0" className="score-box" style={{width:56}} placeholder={f.away_score!==null&&f.away_score!==undefined?String(f.away_score):'0'} value={scores[f.id]?.a??(f.away_score!==null&&f.away_score!==undefined?String(f.away_score):'')} onChange={e=>setScores(p=>({...p,[f.id]:{...p[f.id],a:e.target.value}}))}/>
-                  <button className="btn-g" style={{flex:1,padding:'9px 10px',fontSize:13}} onClick={()=>saveScore(f.id)}>Save ✅</button>
+                  <button className="btn-g" style={{flex:1,padding:'9px 10px',fontSize:13}} onClick={()=>saveScore(f.id)}>{f.home_score!==null&&f.home_score!==undefined?'Saved ✅':'Save ✅'}</button>
                 </div>
               </div>
             ))}
