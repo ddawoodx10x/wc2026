@@ -6,58 +6,17 @@ import { Nav } from '@/components/Nav';
 
 interface LbEntry{id?:string;name:string;emoji:string;pts:number;exact:number;correct:number;wrong:number;total:number;rank:number;}
 
-function spawnConfetti(cols:string[],count=50){
-  for(let i=0;i<count;i++){
-    const p=document.createElement('div');
-    const size=5+Math.random()*10;
-    p.style.cssText=`position:fixed;top:-20px;left:${Math.random()*100}%;width:${size}px;height:${size}px;background:${cols[i%cols.length]};border-radius:${i%3?'50%':'3px'};pointer-events:none;z-index:9999;animation:lbFall ${2+Math.random()*1.5}s ease-in forwards;animation-delay:${Math.random()*0.8}s`;
-    document.body.appendChild(p);
-    setTimeout(()=>p.remove(),4500);
-  }
-}
+function spawnConfetti(cols:string[],count=50){for(let i=0;i<count;i++){const p=document.createElement('div');const size=5+Math.random()*10;p.style.cssText=`position:fixed;top:-20px;left:${Math.random()*100}%;width:${size}px;height:${size}px;background:${cols[i%cols.length]};border-radius:${i%3?'50%':'3px'};pointer-events:none;z-index:9999;animation:lbFall ${2+Math.random()*1.5}s ease-in forwards;animation-delay:${Math.random()*0.8}s`;document.body.appendChild(p);setTimeout(()=>p.remove(),4500);}}
 
-function celebrateRank1(entry: LbEntry){
-  const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9990;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;animation:lbFadeIn 0.4s ease-out;cursor:pointer';
-  overlay.onclick=()=>overlay.remove();
-  overlay.innerHTML=`<div style="font-size:100px;animation:lbBurst 0.7s cubic-bezier(.17,.67,.35,1.3) forwards;filter:drop-shadow(0 0 40px rgba(245,200,66,1))">🏆</div><div style="font-size:32px;font-weight:900;color:#fde68a;text-align:center;line-height:1.3;text-shadow:0 0 30px rgba(245,200,66,0.8)">${entry.emoji} ${entry.name}</div><div style="font-size:20px;color:white;font-weight:700">You're #1! 👑</div><div style="font-size:52px;font-weight:900;color:#fde68a;text-shadow:0 0 20px rgba(245,200,66,0.9)">${entry.pts} pts</div><div style="font-size:13px;color:rgba(255,255,255,0.45);margin-top:4px">Tap anywhere to close</div>`;
-  document.body.appendChild(overlay);
-  spawnConfetti(['#f5c842','#fde68a','#f59e0b','#fff','#ff6b35','#34d399','#c084fc'],90);
-}
+function celebrateRank1(entry:LbEntry){const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9990;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;animation:lbFadeIn 0.4s ease-out;cursor:pointer';overlay.onclick=()=>overlay.remove();overlay.innerHTML=`<div style="font-size:100px;animation:lbBurst 0.7s cubic-bezier(.17,.67,.35,1.3) forwards;filter:drop-shadow(0 0 40px rgba(245,200,66,1))">🏆</div><div style="font-size:32px;font-weight:900;color:#fde68a;text-align:center;line-height:1.3;text-shadow:0 0 30px rgba(245,200,66,0.8)">${entry.emoji} ${entry.name}</div><div style="font-size:20px;color:white;font-weight:700">You're #1! 👑</div><div style="font-size:52px;font-weight:900;color:#fde68a;text-shadow:0 0 20px rgba(245,200,66,0.9)">${entry.pts} pts</div><div style="font-size:13px;color:rgba(255,255,255,0.45);margin-top:4px">Tap anywhere to close</div>`;document.body.appendChild(overlay);spawnConfetti(['#f5c842','#fde68a','#f59e0b','#fff','#ff6b35','#34d399','#c084fc'],90);}
 
-function celebrateRank2(entry: LbEntry){
-  const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9990;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;animation:lbFadeIn 0.4s ease-out;cursor:pointer';
-  overlay.onclick=()=>overlay.remove();
-  overlay.innerHTML=`<div style="font-size:90px;animation:lbBurst 0.6s cubic-bezier(.17,.67,.35,1.3) forwards;filter:drop-shadow(0 0 30px rgba(209,213,219,0.9))">🥈</div><div style="font-size:26px;font-weight:900;color:#d1d5db;text-align:center">${entry.emoji} ${entry.name}</div><div style="font-size:18px;color:rgba(255,255,255,0.8);font-weight:700">#2 — So close! 💪</div><div style="font-size:44px;font-weight:900;color:#d1d5db">${entry.pts} pts</div><div style="font-size:13px;color:rgba(255,255,255,0.4)">Tap to close</div>`;
-  document.body.appendChild(overlay);
-  spawnConfetti(['#d1d5db','#e5e7eb','#9ca3af','#fff','#60a5fa'],50);
-}
+function celebrateRank2(entry:LbEntry){const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9990;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;animation:lbFadeIn 0.4s ease-out;cursor:pointer';overlay.onclick=()=>overlay.remove();overlay.innerHTML=`<div style="font-size:90px;animation:lbBurst 0.6s cubic-bezier(.17,.67,.35,1.3) forwards;filter:drop-shadow(0 0 30px rgba(209,213,219,0.9))">🥈</div><div style="font-size:26px;font-weight:900;color:#d1d5db;text-align:center">${entry.emoji} ${entry.name}</div><div style="font-size:18px;color:rgba(255,255,255,0.8);font-weight:700">#2 — So close! 💪</div><div style="font-size:44px;font-weight:900;color:#d1d5db">${entry.pts} pts</div><div style="font-size:13px;color:rgba(255,255,255,0.4)">Tap to close</div>`;document.body.appendChild(overlay);spawnConfetti(['#d1d5db','#e5e7eb','#9ca3af','#fff','#60a5fa'],50);}
 
-function celebrateRank3(entry: LbEntry){
-  const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9990;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;animation:lbFadeIn 0.4s ease-out;cursor:pointer';
-  overlay.onclick=()=>overlay.remove();
-  overlay.innerHTML=`<div style="font-size:88px;animation:lbBurst 0.6s cubic-bezier(.17,.67,.35,1.3) forwards;filter:drop-shadow(0 0 24px rgba(96,165,250,0.9))">🥉</div><div style="font-size:24px;font-weight:900;color:#93c5fd;text-align:center">${entry.emoji} ${entry.name}</div><div style="font-size:17px;color:rgba(255,255,255,0.7);font-weight:700">#3 — Top 3 baby! 🔥</div><div style="font-size:42px;font-weight:900;color:#60a5fa">${entry.pts} pts</div><div style="font-size:13px;color:rgba(255,255,255,0.4)">Tap to close</div>`;
-  document.body.appendChild(overlay);
-  spawnConfetti(['#60a5fa','#93c5fd','#bfdbfe','#fff','#4ade80'],40);
-}
+function celebrateRank3(entry:LbEntry){const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9990;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;animation:lbFadeIn 0.4s ease-out;cursor:pointer';overlay.onclick=()=>overlay.remove();overlay.innerHTML=`<div style="font-size:88px;animation:lbBurst 0.6s cubic-bezier(.17,.67,.35,1.3) forwards;filter:drop-shadow(0 0 24px rgba(96,165,250,0.9))">🥉</div><div style="font-size:24px;font-weight:900;color:#93c5fd;text-align:center">${entry.emoji} ${entry.name}</div><div style="font-size:17px;color:rgba(255,255,255,0.7);font-weight:700">#3 — Top 3 baby! 🔥</div><div style="font-size:42px;font-weight:900;color:#60a5fa">${entry.pts} pts</div><div style="font-size:13px;color:rgba(255,255,255,0.4)">Tap to close</div>`;document.body.appendChild(overlay);spawnConfetti(['#60a5fa','#93c5fd','#bfdbfe','#fff','#4ade80'],40);}
 
-function celebrateOtherRank(entry: LbEntry){
-  const banner=document.createElement('div');
-  banner.style.cssText=`position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-12px);z-index:9991;background:rgba(20,20,40,0.97);border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:16px 24px;text-align:center;animation:lbSlideDown 0.4s ease-out forwards;pointer-events:none;min-width:240px`;
-  banner.innerHTML=`<div style="font-size:32px;margin-bottom:6px">${entry.emoji}</div><div style="font-size:16px;font-weight:800;color:white;margin-bottom:3px">${entry.name}</div><div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:8px">Rank #${entry.rank}</div><div style="font-size:28px;font-weight:900;color:white">${entry.pts} pts</div><div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px">⚡${entry.exact} exact · ✅${entry.correct} correct · 🎯${entry.total} picks</div>`;
-  document.body.appendChild(banner);
-  setTimeout(()=>{banner.style.transition='opacity 0.4s,transform 0.4s';banner.style.opacity='0';banner.style.transform='translateX(-50%) translateY(-20px)';setTimeout(()=>banner.remove(),400);},2500);
-}
+function celebrateOtherRank(entry:LbEntry){const banner=document.createElement('div');banner.style.cssText=`position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-12px);z-index:9991;background:rgba(20,20,40,0.97);border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:16px 24px;text-align:center;animation:lbSlideDown 0.4s ease-out forwards;pointer-events:none;min-width:240px`;banner.innerHTML=`<div style="font-size:32px;margin-bottom:6px">${entry.emoji}</div><div style="font-size:16px;font-weight:800;color:white;margin-bottom:3px">${entry.name}</div><div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:8px">Rank #${entry.rank}</div><div style="font-size:28px;font-weight:900;color:white">${entry.pts} pts</div><div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px">⚡${entry.exact} exact · ✅${entry.correct} correct · 🎯${entry.total} picks</div>`;document.body.appendChild(banner);setTimeout(()=>{banner.style.transition='opacity 0.4s,transform 0.4s';banner.style.opacity='0';banner.style.transform='translateX(-50%) translateY(-20px)';setTimeout(()=>banner.remove(),400);},2500);}
 
-function triggerCelebration(me: LbEntry){
-  if(typeof window==='undefined')return;
-  if(me.rank===1)celebrateRank1(me);
-  else if(me.rank===2)celebrateRank2(me);
-  else if(me.rank===3)celebrateRank3(me);
-  else celebrateOtherRank(me);
-}
+function triggerCelebration(me:LbEntry){if(typeof window==='undefined')return;if(me.rank===1)celebrateRank1(me);else if(me.rank===2)celebrateRank2(me);else if(me.rank===3)celebrateRank3(me);else celebrateOtherRank(me);}
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
@@ -70,14 +29,23 @@ export default function LeaderboardPage() {
   const load = useCallback(async () => {
     const r = await fetch('/api/leaderboard');
     const d = await r.json();
-    if (d.leaderboard) setLb(d.leaderboard);
+    if (d.leaderboard && user) {
+      // Re-sort: same points → current user first, then alphabetical
+      const sorted = [...d.leaderboard].sort((a: LbEntry, b: LbEntry) => {
+        if (b.pts !== a.pts) return b.pts - a.pts;
+        if (a.name === user.username) return -1;
+        if (b.name === user.username) return 1;
+        return a.name.localeCompare(b.name);
+      }).map((e: LbEntry, i: number) => ({ ...e, rank: i + 1 }));
+      setLb(sorted);
+    }
     setLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { const t = setInterval(load, 30000); return () => clearInterval(t); }, [load]);
 
-  // Fire every time leaderboard loads and user has points
+  // Fire celebration every time leaderboard loads
   useEffect(() => {
     if (!user || loading || lb.length === 0) return;
     const me = lb.find(e => e.name === user.username);
