@@ -150,12 +150,15 @@ export default function PredictionsPage() {
           const lk=isKickedOff(f.kickoff_utc);
           const pts=pred&&sc?calcPoints(pred.home_score,pred.away_score,f.home_score!,f.away_score!):null;
           const border=pts===3?'#fde68a':pts===2?'#4ade80':pts===1&&sc?'rgba(255,255,255,0.15)':lk?'#333':'#1e7a42';
-          const badge=pts===3?<span className="tag tex">⚡ Exact +3</span>:pts===2?<span className="tag tok">✅ +2</span>:pts===1&&sc?<span className="tag twrong">❌ +1</span>:!lk?<span style={{fontSize:11,color:'#4ade80',fontWeight:700}}>Open ✏️</span>:<span style={{fontSize:11,color:'#555'}}>🔒 Locked</span>;
           const cd=!lk?countdown(f.kickoff_utc):null;
           const under1h=cd&&!cd.includes('d')&&(!cd.includes('h')||cd.startsWith('0h'));
-          const ammarManualLocked = tab==='picks' && isAmmar && pred ? (pred.is_locked !== false) : false;
           const hasFinalScore = sc;
-          const showEditInputs = !lk ? true : (isAmmar && tab==='picks' && !hasFinalScore && !ammarManualLocked);
+          const ammarUnlocked = isAmmar && tab==='picks' && pred && pred.is_locked === false && !hasFinalScore;
+          const showEditInputs = !lk ? true : ammarUnlocked;
+          const lockedBadge = isAmmar && tab==='picks' && pred && !hasFinalScore
+            ? <button onClick={()=>toggleLock(f.id)} disabled={lockToggling===f.id} style={{fontSize:11,fontWeight:700,color:ammarUnlocked?'#4ade80':'#f5c842',background:'none',border:'none',cursor:'pointer',padding:0}}>{lockToggling===f.id?'…':ammarUnlocked?'🔓 Unlocked':'🔒 Locked'}</button>
+            : <span style={{fontSize:11,color:'#555'}}>🔒 Locked</span>;
+          const badge=pts===3?<span className="tag tex">⚡ Exact +3</span>:pts===2?<span className="tag tok">✅ +2</span>:pts===1&&sc?<span className="tag twrong">❌ +1</span>:!lk?<span style={{fontSize:11,color:'#4ade80',fontWeight:700}}>Open ✏️</span>:lockedBadge;
           return (
             <div key={f.id} style={{background:'rgba(255,255,255,0.045)',border:'1px solid rgba(255,255,255,0.08)',borderLeft:`3px solid ${border}`,borderRadius:16,padding:'14px 16px',marginBottom:11}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
@@ -173,12 +176,10 @@ export default function PredictionsPage() {
                 <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,minWidth:110}}>
                   {sc&&<div style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:700}}>FINAL: {f.home_score}–{f.away_score}</div>}
                   {lk?(pred?
-                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
-                      <div style={{display:'flex',alignItems:'center',gap:6}}>
-                        <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.home_score}</div>
-                        <span style={{color:'rgba(255,255,255,0.3)',fontWeight:700}}>–</span>
-                        <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.away_score}</div>
-                      </div>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.home_score}</div>
+                      <span style={{color:'rgba(255,255,255,0.3)',fontWeight:700}}>–</span>
+                      <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.away_score}</div>
                     </div>
                   :<span style={{fontSize:12,color:'#555',fontStyle:'italic'}}>No pick</span>):(
                     showEditInputs?(
@@ -188,21 +189,13 @@ export default function PredictionsPage() {
                           <span style={{color:'rgba(255,255,255,0.3)',fontWeight:700,fontSize:18}}>–</span>
                           <input type="number" min="0" max="20" className="score-box" value={drafts[f.id]?.a??(pred?String(pred.away_score):'')} placeholder="0" onChange={e=>setDrafts(p=>({...p,[f.id]:{...p[f.id],a:e.target.value}}))} onKeyDown={e=>e.key==='Enter'&&savePred(f.id)}/>
                         </div>
-                        <div style={{display:'flex',gap:6}}>
-                          <button className="btn-g" style={{width:'auto',padding:'8px 20px',fontSize:13}} onClick={()=>savePred(f.id)} disabled={saving===f.id}>{saving===f.id?'Saving…':pred?'✏️ Update':'🎯 Predict'}</button>
-                          {isAmmar && tab==='picks' && pred && !hasFinalScore && (
-                            <button onClick={()=>toggleLock(f.id)} disabled={lockToggling===f.id} style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'8px 10px',fontSize:13,cursor:'pointer'}} title="Lock prediction">{lockToggling===f.id?'…':'🔒'}</button>
-                          )}
-                        </div>
+                        <button className="btn-g" style={{width:'auto',padding:'8px 20px',fontSize:13}} onClick={()=>savePred(f.id)} disabled={saving===f.id}>{saving===f.id?'Saving…':pred?'✏️ Update':'🎯 Predict'}</button>
                       </div>
                     ):(
-                      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
-                        <div style={{display:'flex',alignItems:'center',gap:6}}>
-                          <div style={{width:46,height:46,background:'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:'2px solid rgba(255,255,255,0.08)',opacity:0.7}}>{pred?.home_score??'?'}</div>
-                          <span style={{color:'rgba(255,255,255,0.3)',fontWeight:700}}>–</span>
-                          <div style={{width:46,height:46,background:'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:'2px solid rgba(255,255,255,0.08)',opacity:0.7}}>{pred?.away_score??'?'}</div>
-                        </div>
-                        <button onClick={()=>toggleLock(f.id)} disabled={lockToggling===f.id} style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'5px 14px',fontSize:12,fontWeight:700,color:'rgba(255,255,255,0.55)',cursor:'pointer'}}>{lockToggling===f.id?'…':'🔓 Unlock'}</button>
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        <div style={{width:46,height:46,background:'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:'2px solid rgba(255,255,255,0.08)'}}>{pred?.home_score??'?'}</div>
+                        <span style={{color:'rgba(255,255,255,0.3)',fontWeight:700}}>–</span>
+                        <div style={{width:46,height:46,background:'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:'2px solid rgba(255,255,255,0.08)'}}>{pred?.away_score??'?'}</div>
                       </div>
                     )
                   )}
