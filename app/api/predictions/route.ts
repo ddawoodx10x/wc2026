@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminSupabase } from '@/lib/supabase';
 
+const AMMAR_USERNAME = 'Ammar';
+
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get('userId');
   const sb = adminSupabase();
@@ -14,13 +16,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const { userId, fixtureId, homeScore, awayScore } = await req.json();
   const sb = adminSupabase();
-  // Check kickoff hasn't passed
   const { data: fx } = await sb.from('fixtures').select('kickoff_utc,match_number').eq('id', fixtureId).single();
   if (!fx) return NextResponse.json({ error: 'Fixture not found' }, { status: 404 });
-  
+
   const now = new Date();
   const ko = new Date(fx.kickoff_utc);
-  // Match 1 special: locked at 23:00 Saudi (20:00 UTC on Jun 11)
   if (fx.match_number === 1) {
     const lockTime = new Date('2026-06-11T20:00:00Z');
     if (now >= lockTime) return NextResponse.json({ error: 'Predictions locked 🔒' }, { status: 403 });
@@ -34,6 +34,24 @@ export async function POST(req: NextRequest) {
     updated_at: new Date().toISOString(),
   }, { onConflict: 'user_id,fixture_id' }).select().single();
 
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ prediction: data });
+}
+
+export async function PATCH(req: NextRequest) {
+  const { userId, fixtureId, isLocked, username } = await req.json();
+  if (username !== AMMAR_USERNAME) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+  const sb = adminSupabase();
+  if (!isLocked) {
+    const { data: fx } = await sb.from('fixtures').select('home_score').eq('id', fixtureId).single();
+    if (fx && fx.home_score !== null && fx.home_score !== undefined) {
+      return NextResponse.json({ error: 'Cannot unlock after final score' }, { status: 403 });
+    }
+  }
+  const { data, error } = await sb.from('predictions')
+    .update({ is_locked: isLocked, updated_at: new Date().toISOString() })
+    .eq('user_id', userId).eq('fixture_id', fixtureId)
+    .select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ prediction: data });
 }
