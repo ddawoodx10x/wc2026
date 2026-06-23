@@ -73,7 +73,7 @@ export default function PredictionsPage() {
     const hv=parseInt(d.h), av=parseInt(d.a);
     if(isNaN(hv)||isNaN(av)||hv<0||av<0){showToast('Invalid scores','err');return;}
     setSaving(fxId);
-    const r = await fetch('/api/predictions', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId:user!.id,fixtureId:fxId,homeScore:hv,awayScore:av}) });
+    const r = await fetch('/api/predictions', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId:user!.id,fixtureId:fxId,homeScore:hv,awayScore:av,username:user!.username}) });
     const data = await r.json();
     setSaving(null);
     if (data.error) { showToast(data.error,'err'); return; }
