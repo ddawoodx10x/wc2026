@@ -6,7 +6,7 @@ import { Nav } from '@/components/Nav';
 import { calcPoints, isKickedOff } from '@/lib/fixtures-data';
 
 interface Fx{id:string;match_number:number;stage:string;group?:string;home_team:string;away_team:string;home_flag:string;away_flag:string;kickoff_utc:string;status:string;home_score?:number;away_score?:number;}
-interface Pred{id:string;fixture_id:string;home_score:number;away_score:number;points?:number;}
+interface Pred{id:string;fixture_id:string;home_score:number;away_score:number;points?:number;is_locked?:boolean;}
 
 function spawnConfetti(cols:string[],count=50){for(let i=0;i<count;i++){const p=document.createElement('div');const size=5+Math.random()*10;p.style.cssText=`position:fixed;top:-20px;left:${Math.random()*100}%;width:${size}px;height:${size}px;background:${cols[i%cols.length]};border-radius:${i%3?'50%':'3px'};pointer-events:none;z-index:9999;animation:wcFall ${2+Math.random()*1.5}s ease-in forwards;animation-delay:${Math.random()*0.6}s`;document.body.appendChild(p);setTimeout(()=>p.remove(),4000);}}
 
@@ -21,11 +21,13 @@ function countdown(utc:string){const diff=new Date(utc).getTime()-Date.now();if(
 export default function PredictionsPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const isAmmar = user?.username === 'Ammar';
   const [fxs, setFxs] = useState<Fx[]>([]);
   const [preds, setPreds] = useState<Record<string,Pred>>({});
   const [tab, setTab] = useState<'upcoming'|'picks'|'results'>('upcoming');
   const [drafts, setDrafts] = useState<Record<string,{h:string;a:string}>>({});
   const [saving, setSaving] = useState<string|null>(null);
+  const [lockToggling, setLockToggling] = useState<string|null>(null);
   const [toast, setToast] = useState<{msg:string;type:string}|null>(null);
   const [, setTick] = useState(0);
   const celebratedFxIds = useRef<Set<string>>(new Set());
@@ -79,6 +81,21 @@ export default function PredictionsPage() {
     setPreds(prev => ({...prev, [fxId]: data.prediction}));
     setDrafts(prev => { const n={...prev}; delete n[fxId]; return n; });
     showToast('Prediction saved! 🎯');
+  };
+
+  const toggleLock = async (fxId: string) => {
+    if (!isAmmar || !user) return;
+    const pred = preds[fxId];
+    if (!pred) return;
+    const newLocked = !pred.is_locked;
+    setLockToggling(fxId);
+    const r = await fetch('/api/predictions', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: user.id, fixtureId: fxId, isLocked: newLocked, username: user.username }) });
+    const data = await r.json();
+    setLockToggling(null);
+    if (data.error) { showToast(data.error, 'err'); return; }
+    setPreds(prev => ({...prev, [fxId]: {...prev[fxId], is_locked: newLocked}}));
+    if (newLocked) { animateLock(); showToast('Locked 🔒'); }
+    else showToast('Unlocked — edit away ✏️');
   };
 
   if (!user) return null;
@@ -136,6 +153,9 @@ export default function PredictionsPage() {
           const badge=pts===3?<span className="tag tex">⚡ Exact +3</span>:pts===2?<span className="tag tok">✅ +2</span>:pts===1&&sc?<span className="tag twrong">❌ +1</span>:!lk?<span style={{fontSize:11,color:'#4ade80',fontWeight:700}}>Open ✏️</span>:<span style={{fontSize:11,color:'#555'}}>🔒 Locked</span>;
           const cd=!lk?countdown(f.kickoff_utc):null;
           const under1h=cd&&!cd.includes('d')&&(!cd.includes('h')||cd.startsWith('0h'));
+          const ammarManualLocked = tab==='picks' && isAmmar && pred ? (pred.is_locked !== false) : false;
+          const hasFinalScore = sc;
+          const showEditInputs = !lk ? true : (isAmmar && tab==='picks' && !hasFinalScore && !ammarManualLocked);
           return (
             <div key={f.id} style={{background:'rgba(255,255,255,0.045)',border:'1px solid rgba(255,255,255,0.08)',borderLeft:`3px solid ${border}`,borderRadius:16,padding:'14px 16px',marginBottom:11}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
@@ -153,20 +173,38 @@ export default function PredictionsPage() {
                 <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,minWidth:110}}>
                   {sc&&<div style={{fontSize:11,color:'rgba(255,255,255,0.35)',fontWeight:700}}>FINAL: {f.home_score}–{f.away_score}</div>}
                   {lk?(pred?
-                    <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.home_score}</div>
-                      <span style={{color:'rgba(255,255,255,0.3)',fontWeight:700}}>–</span>
-                      <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.away_score}</div>
+                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.home_score}</div>
+                        <span style={{color:'rgba(255,255,255,0.3)',fontWeight:700}}>–</span>
+                        <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.away_score}</div>
+                      </div>
                     </div>
                   :<span style={{fontSize:12,color:'#555',fontStyle:'italic'}}>No pick</span>):(
-                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:7}}>
-                      <div style={{display:'flex',alignItems:'center',gap:7}}>
-                        <input type="number" min="0" max="20" className="score-box" value={drafts[f.id]?.h??(pred?String(pred.home_score):'')} placeholder="0" onChange={e=>setDrafts(p=>({...p,[f.id]:{...p[f.id],h:e.target.value}}))} onKeyDown={e=>e.key==='Enter'&&savePred(f.id)}/>
-                        <span style={{color:'rgba(255,255,255,0.3)',fontWeight:700,fontSize:18}}>–</span>
-                        <input type="number" min="0" max="20" className="score-box" value={drafts[f.id]?.a??(pred?String(pred.away_score):'')} placeholder="0" onChange={e=>setDrafts(p=>({...p,[f.id]:{...p[f.id],a:e.target.value}}))} onKeyDown={e=>e.key==='Enter'&&savePred(f.id)}/>
+                    showEditInputs?(
+                      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:7}}>
+                        <div style={{display:'flex',alignItems:'center',gap:7}}>
+                          <input type="number" min="0" max="20" className="score-box" value={drafts[f.id]?.h??(pred?String(pred.home_score):'')} placeholder="0" onChange={e=>setDrafts(p=>({...p,[f.id]:{...p[f.id],h:e.target.value}}))} onKeyDown={e=>e.key==='Enter'&&savePred(f.id)}/>
+                          <span style={{color:'rgba(255,255,255,0.3)',fontWeight:700,fontSize:18}}>–</span>
+                          <input type="number" min="0" max="20" className="score-box" value={drafts[f.id]?.a??(pred?String(pred.away_score):'')} placeholder="0" onChange={e=>setDrafts(p=>({...p,[f.id]:{...p[f.id],a:e.target.value}}))} onKeyDown={e=>e.key==='Enter'&&savePred(f.id)}/>
+                        </div>
+                        <div style={{display:'flex',gap:6}}>
+                          <button className="btn-g" style={{width:'auto',padding:'8px 20px',fontSize:13}} onClick={()=>savePred(f.id)} disabled={saving===f.id}>{saving===f.id?'Saving…':pred?'✏️ Update':'🎯 Predict'}</button>
+                          {isAmmar && tab==='picks' && pred && !hasFinalScore && (
+                            <button onClick={()=>toggleLock(f.id)} disabled={lockToggling===f.id} style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'8px 10px',fontSize:13,cursor:'pointer'}} title="Lock prediction">{lockToggling===f.id?'…':'🔒'}</button>
+                          )}
+                        </div>
                       </div>
-                      <button className="btn-g" style={{width:'auto',padding:'8px 20px',fontSize:13}} onClick={()=>savePred(f.id)} disabled={saving===f.id}>{saving===f.id?'Saving…':pred?'✏️ Update':'🎯 Predict'}</button>
-                    </div>
+                    ):(
+                      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <div style={{width:46,height:46,background:'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:'2px solid rgba(255,255,255,0.08)',opacity:0.7}}>{pred?.home_score??'?'}</div>
+                          <span style={{color:'rgba(255,255,255,0.3)',fontWeight:700}}>–</span>
+                          <div style={{width:46,height:46,background:'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:'2px solid rgba(255,255,255,0.08)',opacity:0.7}}>{pred?.away_score??'?'}</div>
+                        </div>
+                        <button onClick={()=>toggleLock(f.id)} disabled={lockToggling===f.id} style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,padding:'5px 14px',fontSize:12,fontWeight:700,color:'rgba(255,255,255,0.55)',cursor:'pointer'}}>{lockToggling===f.id?'…':'🔓 Unlock'}</button>
+                      </div>
+                    )
                   )}
                 </div>
                 <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
