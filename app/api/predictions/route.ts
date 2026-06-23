@@ -14,18 +14,20 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId, fixtureId, homeScore, awayScore } = await req.json();
+  const { userId, fixtureId, homeScore, awayScore, username } = await req.json();
   const sb = adminSupabase();
   const { data: fx } = await sb.from('fixtures').select('kickoff_utc,match_number').eq('id', fixtureId).single();
   if (!fx) return NextResponse.json({ error: 'Fixture not found' }, { status: 404 });
 
-  const now = new Date();
-  const ko = new Date(fx.kickoff_utc);
-  if (fx.match_number === 1) {
-    const lockTime = new Date('2026-06-11T20:00:00Z');
-    if (now >= lockTime) return NextResponse.json({ error: 'Predictions locked 🔒' }, { status: 403 });
-  } else if (now >= ko) {
-    return NextResponse.json({ error: 'Match started — prediction locked 🔒' }, { status: 403 });
+  if (username !== AMMAR_USERNAME) {
+    const now = new Date();
+    const ko = new Date(fx.kickoff_utc);
+    if (fx.match_number === 1) {
+      const lockTime = new Date('2026-06-11T20:00:00Z');
+      if (now >= lockTime) return NextResponse.json({ error: 'Predictions locked 🔒' }, { status: 403 });
+    } else if (now >= ko) {
+      return NextResponse.json({ error: 'Match started — prediction locked 🔒' }, { status: 403 });
+    }
   }
 
   const { data, error } = await sb.from('predictions').upsert({
