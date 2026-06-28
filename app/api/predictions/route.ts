@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId, fixtureId, homeScore, awayScore, username } = await req.json();
+  const { userId, fixtureId, homeScore, awayScore, penaltyWinner, username } = await req.json();
   const sb = adminSupabase();
   const { data: fx } = await sb.from('fixtures').select('kickoff_utc,match_number').eq('id', fixtureId).single();
   if (!fx) return NextResponse.json({ error: 'Fixture not found' }, { status: 404 });
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
   const { data, error } = await sb.from('predictions').upsert({
     user_id: userId, fixture_id: fixtureId,
     home_score: homeScore, away_score: awayScore,
+    penalty_winner: penaltyWinner || null,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'user_id,fixture_id' }).select().single();
 
