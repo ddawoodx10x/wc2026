@@ -6,7 +6,7 @@ import { Nav } from '@/components/Nav';
 import { calcPoints, isKickedOff } from '@/lib/fixtures-data';
 
 interface Fx{id:string;match_number:number;stage:string;group?:string;home_team:string;away_team:string;home_flag:string;away_flag:string;kickoff_utc:string;status:string;home_score?:number;away_score?:number;}
-interface Pred{id:string;fixture_id:string;home_score:number;away_score:number;points?:number;is_locked?:boolean;}
+interface Pred{id:string;fixture_id:string;home_score:number;away_score:number;points?:number;is_locked?:boolean;updated_at?:string;}
 
 function spawnConfetti(cols:string[],count=50){for(let i=0;i<count;i++){const p=document.createElement('div');const size=5+Math.random()*10;p.style.cssText=`position:fixed;top:-20px;left:${Math.random()*100}%;width:${size}px;height:${size}px;background:${cols[i%cols.length]};border-radius:${i%3?'50%':'3px'};pointer-events:none;z-index:9999;animation:wcFall ${2+Math.random()*1.5}s ease-in forwards;animation-delay:${Math.random()*0.6}s`;document.body.appendChild(p);setTimeout(()=>p.remove(),4000);}}
 
@@ -51,15 +51,21 @@ export default function PredictionsPage() {
   useEffect(() => {
     if (!user || tab !== 'results') return;
     const scored = fxs.filter(f => f.home_score !== null && f.home_score !== undefined);
-    scored.forEach((f, idx) => {
-      if (celebratedFxIds.current.has(f.id)) return;
-      const pred = preds[f.id];
-      if (!pred) return;
-      celebratedFxIds.current.add(f.id);
-      const pts = calcPoints(pred.home_score, pred.away_score, f.home_score!, f.away_score!);
-      if (pts === 3) setTimeout(celebrateExact, idx * 200 + 400);
-      else if (pts === 2) setTimeout(celebrateCorrect, idx * 200 + 400);
+    // Only celebrate the single most recently updated result
+    const uncelebrated = scored.filter(f => !celebratedFxIds.current.has(f.id) && preds[f.id]);
+    if (uncelebrated.length === 0) return;
+    // Pick the one with the latest updated_at
+    const latest = uncelebrated.reduce((a, b) => {
+      const aTime = preds[a.id]?.updated_at ?? a.kickoff_utc;
+      const bTime = preds[b.id]?.updated_at ?? b.kickoff_utc;
+      return aTime > bTime ? a : b;
     });
+    // Mark all as celebrated so they don't fire again
+    uncelebrated.forEach(f => celebratedFxIds.current.add(f.id));
+    const pred = preds[latest.id];
+    const pts = calcPoints(pred.home_score, pred.away_score, latest.home_score!, latest.away_score!);
+    if (pts === 3) setTimeout(celebrateExact, 400);
+    else if (pts === 2) setTimeout(celebrateCorrect, 400);
   }, [fxs, preds, tab, user]);
 
   const switchTab = (t: 'upcoming'|'picks'|'results') => {
