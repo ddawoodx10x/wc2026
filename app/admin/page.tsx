@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Nav } from '@/components/Nav';
 import { isKickedOff } from '@/lib/fixtures-data';
 
-interface Fx{id:string;match_number:number;stage:string;group?:string;home_team:string;away_team:string;home_flag:string;away_flag:string;kickoff_utc:string;status:string;home_score?:number;away_score?:number;}
+interface Fx{id:string;match_number:number;stage:string;group?:string;home_team:string;away_team:string;home_flag:string;away_flag:string;kickoff_utc:string;status:string;home_score?:number;away_score?:number;penalty_winner?:string|null;}
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -13,6 +13,7 @@ export default function AdminPage() {
   const [fxs, setFxs] = useState<Fx[]>([]);
   const [tab, setTab] = useState<'scores'|'picks'>('scores');
   const [scores, setScores] = useState<Record<string,{h:string;a:string}>>({});
+  const [penWinners, setPenWinners] = useState<Record<string,string>>({});
   const [allPreds, setAllPreds] = useState<any[]>([]);
   const [toast, setToast] = useState<{msg:string;type:string}|null>(null);
   const [seeding, setSeeding] = useState(false);
@@ -46,7 +47,7 @@ export default function AdminPage() {
     if (!s||s.h===''||s.a==='') { showToast('Enter both scores','err'); return; }
     const hv=parseInt(s.h), av=parseInt(s.a);
     if(isNaN(hv)||isNaN(av)||hv<0||av<0){showToast('Invalid scores','err');return;}
-    const r = await fetch('/api/admin/score', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({userId:user!.id,fixtureId:fxId,homeScore:hv,awayScore:av}) });
+    const r = await fetch('/api/admin/score', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({userId:user!.id,fixtureId:fxId,homeScore:hv,awayScore:av,penaltyWinner:penWinners[fxId]||null}) });
     const d = await r.json();
     if (d.error) showToast(d.error,'err');
     else { showToast(`⚽ ${hv}–${av} saved! ${d.updated} predictions updated`); load(); }
@@ -88,7 +89,8 @@ export default function AdminPage() {
               <div key={f.id} className="mcard" style={{marginBottom:10}}>
                 <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
                   <span style={{fontSize:11,color:'rgba(255,255,255,0.35)'}}>#{f.match_number} · {f.group?`Group ${f.group}`:f.stage}</span>
-                  {f.home_score!==null&&f.home_score!==undefined&&<span style={{fontSize:11,color:'#4ade80',fontWeight:700}}>✅ FT: {f.home_score}–{f.away_score}</span>}
+                  {f.home_score!==null&&f.home_score!==undefined&&<span style={{fontSize:11,color:'#4ade80',fontWeight:700}}>✅ FT: {f.home_score}–{f.away_score}{f.penalty_winner?` (pens: ${f.penalty_winner})`:''}
+                  </span>}
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:10}}>
                   <span style={{fontSize:17}}>{f.home_flag}</span><span style={{fontWeight:700,flex:1,fontSize:12}}>{f.home_team}</span>
@@ -96,10 +98,17 @@ export default function AdminPage() {
                   <span style={{fontWeight:700,flex:1,textAlign:'right',fontSize:12}}>{f.away_team}</span><span style={{fontSize:17}}>{f.away_flag}</span>
                 </div>
                 <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                  <input type="number" min="0" className="score-box" style={{width:56}} placeholder={f.home_score!==null&&f.home_score!==undefined?String(f.home_score):'0'} value={scores[f.id]?.h??(f.home_score!==null&&f.home_score!==undefined?String(f.home_score):'')} onChange={e=>setScores(p=>({...p,[f.id]:{...p[f.id],h:e.target.value}}))}/>
-                  <span style={{color:'rgba(255,255,255,0.3)',fontWeight:900}}>–</span>
-                  <input type="number" min="0" className="score-box" style={{width:56}} placeholder={f.away_score!==null&&f.away_score!==undefined?String(f.away_score):'0'} value={scores[f.id]?.a??(f.away_score!==null&&f.away_score!==undefined?String(f.away_score):'')} onChange={e=>setScores(p=>({...p,[f.id]:{...p[f.id],a:e.target.value}}))}/>
-                  <button className="btn-g" style={{flex:1,padding:'9px 10px',fontSize:13}} onClick={()=>saveScore(f.id)}>{f.home_score!==null&&f.home_score!==undefined?'Saved ✅':'Save ✅'}</button>
+                  <input type="number" min="0" className="score-box" style={{width:56}} placeholder={f.home_score!==null&&f.home_score!==undefined?String(f.home_score):'0'} value={scores[f.id]?.h??(f.home_score!==null&&f.home_score!==undefined?String(f.home_score):'')} onChange={e=>setScores(p=>({...p,[f.id]:{...p[f.id],h:e.target.value}}))}/>\n                  <span style={{color:'rgba(255,255,255,0.3)',fontWeight:900}}>–</span>
+                  <input type="number" min="0" className="score-box" style={{width:56}} placeholder={f.away_score!==null&&f.away_score!==undefined?String(f.away_score):'0'} value={scores[f.id]?.a??(f.away_score!==null&&f.away_score!==undefined?String(f.away_score):'')} onChange={e=>setScores(p=>({...p,[f.id]:{...p[f.id],a:e.target.value}}))}/>\n                  <button className="btn-g" style={{flex:1,padding:'9px 10px',fontSize:13}} onClick={()=>saveScore(f.id)}>{f.home_score!==null&&f.home_score!==undefined?'Saved ✅':'Save ✅'}</button>
+                </div>
+                <div style={{marginTop:8,padding:'8px 10px',background:'rgba(255,255,255,0.04)',borderRadius:10,border:'1px solid rgba(255,255,255,0.08)'}}>
+                  <div style={{fontSize:10,color:'rgba(255,255,255,0.35)',fontWeight:700,marginBottom:6}}>🏆 PENALTY WINNER (leave empty if no pens)</div>
+                  <div style={{display:'flex',gap:6}}>
+                    {[{key:'home',flag:f.home_flag,name:f.home_team},{key:'away',flag:f.away_flag,name:f.away_team},{key:'',flag:'❌',name:'No Pens'}].map(t=>{
+                      const sel=(penWinners[f.id]??f.penalty_winner??'')===t.key;
+                      return <button key={t.key||'none'} onClick={()=>setPenWinners(p=>({...p,[f.id]:t.key}))} style={{flex:1,padding:'6px 4px',borderRadius:8,border:`2px solid ${sel?'#f5c842':'rgba(255,255,255,0.1)'}`,background:sel?'rgba(245,200,66,0.15)':'rgba(255,255,255,0.04)',cursor:'pointer',fontSize:11,fontWeight:700,color:sel?'#fde68a':'rgba(255,255,255,0.45)'}}>{t.flag} {t.name}</button>;
+                    })}
+                  </div>
                 </div>
               </div>
             ))}
@@ -115,13 +124,14 @@ export default function AdminPage() {
                 <div key={f.id} style={{marginBottom:14}}>
                   <div style={{fontWeight:700,fontSize:12,color:'rgba(255,255,255,0.5)',marginBottom:5}}>
                     #{f.match_number} {f.home_flag} {f.home_team} vs {f.away_team} {f.away_flag}
-                    {sc&&<span style={{color:'#fde68a',marginLeft:7}}>({f.home_score}–{f.away_score})</span>}
+                    {sc&&<span style={{color:'#fde68a',marginLeft:7}}>({f.home_score}–{f.away_score}{f.penalty_winner?`, pens: ${f.penalty_winner}`:''})</span>}
                   </div>
                   {fp.map((p:any)=>(
                     <div key={p.id} style={{display:'flex',alignItems:'center',gap:8,background:'rgba(255,255,255,0.04)',borderRadius:9,padding:'8px 10px',fontSize:12,marginBottom:3}}>
                       <span style={{fontWeight:700,width:80}}>{p.user?.username}</span>
                       <span style={{fontWeight:700}}>{p.home_score}–{p.away_score}</span>
-                      {p.points!==null&&p.points!==undefined&&<span style={{marginLeft:'auto',fontWeight:700,color:p.points===3?'#fde68a':p.points===2?'#86efac':'#888'}}>+{p.points}pt{p.points!==1?'s':''}</span>}
+                      {p.penalty_winner&&<span style={{fontSize:10,color:'#f5c842'}}>🏆 {p.penalty_winner}</span>}
+                      {p.points!==null&&p.points!==undefined&&<span style={{marginLeft:'auto',fontWeight:700,color:p.points===3?'#fde68a':p.points>=2?'#86efac':'#888'}}>+{p.points}pt{p.points!==1?'s':''}</span>}
                     </div>
                   ))}
                 </div>
