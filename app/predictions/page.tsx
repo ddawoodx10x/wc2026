@@ -5,8 +5,8 @@ import { useAuth } from '@/lib/auth-context';
 import { Nav } from '@/components/Nav';
 import { calcPoints, isKickedOff } from '@/lib/fixtures-data';
 
-interface Fx{id:string;match_number:number;stage:string;group?:string;home_team:string;away_team:string;home_flag:string;away_flag:string;kickoff_utc:string;status:string;home_score?:number;away_score?:number;}
-interface Pred{id:string;fixture_id:string;home_score:number;away_score:number;points?:number;is_locked?:boolean;updated_at?:string;}
+interface Fx{id:string;match_number:number;stage:string;group?:string;home_team:string;away_team:string;home_flag:string;away_flag:string;kickoff_utc:string;status:string;home_score?:number;away_score?:number;penalty_winner?:string|null;}
+interface Pred{id:string;fixture_id:string;home_score:number;away_score:number;points?:number;is_locked?:boolean;updated_at?:string;penalty_winner?:string|null;}
 
 function spawnConfetti(cols:string[],count=50){for(let i=0;i<count;i++){const p=document.createElement('div');const size=5+Math.random()*10;p.style.cssText=`position:fixed;top:-20px;left:${Math.random()*100}%;width:${size}px;height:${size}px;background:${cols[i%cols.length]};border-radius:${i%3?'50%':'3px'};pointer-events:none;z-index:9999;animation:wcFall ${2+Math.random()*1.5}s ease-in forwards;animation-delay:${Math.random()*0.6}s`;document.body.appendChild(p);setTimeout(()=>p.remove(),4000);}}
 
@@ -26,6 +26,7 @@ export default function PredictionsPage() {
   const [preds, setPreds] = useState<Record<string,Pred>>({});
   const [tab, setTab] = useState<'upcoming'|'picks'|'results'>('upcoming');
   const [drafts, setDrafts] = useState<Record<string,{h:string;a:string}>>({});
+  const [penWinners, setPenWinners] = useState<Record<string,string>>({});
   const [saving, setSaving] = useState<string|null>(null);
   const [lockToggling, setLockToggling] = useState<string|null>(null);
   const [toast, setToast] = useState<{msg:string;type:string}|null>(null);
@@ -51,21 +52,18 @@ export default function PredictionsPage() {
   useEffect(() => {
     if (!user || tab !== 'results') return;
     const scored = fxs.filter(f => f.home_score !== null && f.home_score !== undefined);
-    // Only celebrate the single most recently updated result
     const uncelebrated = scored.filter(f => !celebratedFxIds.current.has(f.id) && preds[f.id]);
     if (uncelebrated.length === 0) return;
-    // Pick the one with the latest updated_at
     const latest = uncelebrated.reduce((a, b) => {
       const aTime = preds[a.id]?.updated_at ?? a.kickoff_utc;
       const bTime = preds[b.id]?.updated_at ?? b.kickoff_utc;
       return aTime > bTime ? a : b;
     });
-    // Mark all as celebrated so they don't fire again
     uncelebrated.forEach(f => celebratedFxIds.current.add(f.id));
     const pred = preds[latest.id];
-    const pts = calcPoints(pred.home_score, pred.away_score, latest.home_score!, latest.away_score!);
+    const pts = calcPoints(pred.home_score, pred.away_score, latest.home_score!, latest.away_score!, pred.penalty_winner, latest.penalty_winner);
     if (pts === 3) setTimeout(celebrateExact, 400);
-    else if (pts === 2) setTimeout(celebrateCorrect, 400);
+    else if (pts >= 2) setTimeout(celebrateCorrect, 400);
   }, [fxs, preds, tab, user]);
 
   const switchTab = (t: 'upcoming'|'picks'|'results') => {
@@ -79,13 +77,14 @@ export default function PredictionsPage() {
     const hv=parseInt(d.h), av=parseInt(d.a);
     if(isNaN(hv)||isNaN(av)||hv<0||av<0){showToast('Invalid scores','err');return;}
     setSaving(fxId);
-    const r = await fetch('/api/predictions', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId:user!.id,fixtureId:fxId,homeScore:hv,awayScore:av,username:user!.username}) });
+    const r = await fetch('/api/predictions', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId:user!.id,fixtureId:fxId,homeScore:hv,awayScore:av,penaltyWinner:penWinners[fxId]||null,username:user!.username}) });
     const data = await r.json();
     setSaving(null);
     if (data.error) { showToast(data.error,'err'); return; }
     animateLock();
     setPreds(prev => ({...prev, [fxId]: data.prediction}));
     setDrafts(prev => { const n={...prev}; delete n[fxId]; return n; });
+    if (data.prediction?.penalty_winner) setPenWinners(prev => ({...prev, [fxId]: data.prediction.penalty_winner}));
     showToast('Prediction saved! 🎯');
   };
 
@@ -111,7 +110,7 @@ export default function PredictionsPage() {
   const lockedFxs = fxs.filter(f => isKickedOff(f.kickoff_utc) && (f.home_score===null||f.home_score===undefined) && preds[f.id]);
   const resultFxs = fxs.filter(f => f.home_score!==null && f.home_score!==undefined);
   const display = tab==='upcoming'?upcomingFxs:tab==='picks'?lockedFxs:resultFxs;
-  const myTotalPts = resultFxs.reduce((sum,f) => { const p=preds[f.id]; if(!p)return sum; return sum+calcPoints(p.home_score,p.away_score,f.home_score!,f.away_score!); }, 0);
+  const myTotalPts = resultFxs.reduce((sum,f) => { const p=preds[f.id]; if(!p)return sum; return sum+calcPoints(p.home_score,p.away_score,f.home_score!,f.away_score!,p.penalty_winner,f.penalty_winner); }, 0);
 
   return (
     <div className="page">
@@ -154,7 +153,7 @@ export default function PredictionsPage() {
           const pred=preds[f.id];
           const sc=f.home_score!==null&&f.home_score!==undefined;
           const lk=isKickedOff(f.kickoff_utc);
-          const pts=pred&&sc?calcPoints(pred.home_score,pred.away_score,f.home_score!,f.away_score!):null;
+          const pts=pred&&sc?calcPoints(pred.home_score,pred.away_score,f.home_score!,f.away_score!,pred.penalty_winner,f.penalty_winner):null;
           const border=pts===3?'#fde68a':pts===2?'#4ade80':pts===1&&sc?'rgba(255,255,255,0.15)':lk?'#333':'#1e7a42';
           const cd=!lk?countdown(f.kickoff_utc):null;
           const under1h=cd&&!cd.includes('d')&&(!cd.includes('h')||cd.startsWith('0h'));
@@ -163,7 +162,7 @@ export default function PredictionsPage() {
           const lockedBadge = isAmmar && tab==='picks' && pred && !hasFinalScore
             ? <button onClick={()=>toggleLock(f.id)} disabled={lockToggling===f.id} style={{fontSize:11,fontWeight:700,color:ammarUnlocked?'#4ade80':'#f5c842',background:'none',border:'none',cursor:'pointer',padding:0}}>{lockToggling===f.id?'…':ammarUnlocked?'🔓 Unlocked':'🔒 Locked'}</button>
             : <span style={{fontSize:11,color:'#555'}}>🔒 Locked</span>;
-          const badge=pts===3?<span className="tag tex">⚡ Exact +3</span>:pts===2?<span className="tag tok">✅ +2</span>:pts===1&&sc?<span className="tag twrong">❌ +1</span>:!lk?<span style={{fontSize:11,color:'#4ade80',fontWeight:700}}>Open ✏️</span>:lockedBadge;
+          const badge=pts===3?<span className="tag tex">⚡ Exact +3</span>:pts!==null&&pts>=2?<span className="tag tok">✅ +{pts}</span>:pts===1&&sc?<span className="tag twrong">❌ +1</span>:!lk?<span style={{fontSize:11,color:'#4ade80',fontWeight:700}}>Open ✏️</span>:lockedBadge;
           return (
             <div key={f.id} style={{background:'rgba(255,255,255,0.045)',border:'1px solid rgba(255,255,255,0.08)',borderLeft:`3px solid ${border}`,borderRadius:16,padding:'14px 16px',marginBottom:11}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
@@ -191,9 +190,9 @@ export default function PredictionsPage() {
                     </div>
                   ):lk?(pred?
                     <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.home_score}</div>
+                      <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts!==null&&pts>=2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts!==null&&pts>=2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.home_score}</div>
                       <span style={{color:'rgba(255,255,255,0.3)',fontWeight:700}}>–</span>
-                      <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts===2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts===2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.away_score}</div>
+                      <div style={{width:46,height:46,background:pts===3?'rgba(245,200,66,0.15)':pts!==null&&pts>=2?'rgba(34,197,94,0.12)':'rgba(255,255,255,0.07)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,border:`2px solid ${pts===3?'rgba(245,200,66,0.3)':pts!==null&&pts>=2?'rgba(34,197,94,0.25)':'rgba(255,255,255,0.08)'}`}}>{pred.away_score}</div>
                     </div>
                   :<span style={{fontSize:12,color:'#555',fontStyle:'italic'}}>No pick</span>):(
                     <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:7}}>
@@ -212,10 +211,32 @@ export default function PredictionsPage() {
                 </div>
               </div>
               {sc&&pts!==null&&(
-                <div style={{marginTop:10,textAlign:'center',padding:'8px 12px',borderRadius:10,background:pts===3?'rgba(245,200,66,0.1)':pts===2?'rgba(34,197,94,0.08)':'rgba(255,255,255,0.04)',border:`1px solid ${pts===3?'rgba(245,200,66,0.2)':pts===2?'rgba(34,197,94,0.15)':'rgba(255,255,255,0.06)'}`}}>
-                  <span style={{fontSize:14,fontWeight:800,color:pts===3?'#fde68a':pts===2?'#4ade80':'rgba(255,255,255,0.4)'}}>
-                    {pts===3?'🎉 Exact score! +3 pts':pts===2?'👍 Correct outcome! +2 pts':'😬 Wrong prediction +1 pt'}
+                <div style={{marginTop:10,textAlign:'center',padding:'8px 12px',borderRadius:10,background:pts===3?'rgba(245,200,66,0.1)':pts>=2?'rgba(34,197,94,0.08)':'rgba(255,255,255,0.04)',border:`1px solid ${pts===3?'rgba(245,200,66,0.2)':pts>=2?'rgba(34,197,94,0.15)':'rgba(255,255,255,0.06)'}`}}>
+                  <span style={{fontSize:14,fontWeight:800,color:pts===3?'#fde68a':pts>=2?'#4ade80':'rgba(255,255,255,0.4)'}}>
+                    {pts===3?'🎉 Exact score! +3 pts':pts===2?'👍 Correct outcome! +2 pts':pts===3?'':pts>2?`🏆 Correct outcome + pen pick! +${pts} pts`:'😬 Wrong prediction +1 pt'}
                   </span>
+                </div>
+              )}
+              {!hasFinalScore && (
+                <div style={{marginTop:8,padding:'8px 10px',background:'rgba(255,255,255,0.04)',borderRadius:10,border:'1px solid rgba(255,255,255,0.08)'}}>
+                  <div style={{fontSize:10,color:'rgba(255,255,255,0.35)',fontWeight:700,marginBottom:6,textAlign:'center'}}>🏆 WHO WINS ON PENALTIES?</div>
+                  <div style={{display:'flex',gap:6}}>
+                    {[{key:'home',flag:f.home_flag,name:f.home_team},{key:'away',flag:f.away_flag,name:f.away_team}].map(t=>{
+                      const sel=(penWinners[f.id]||pred?.penalty_winner)===t.key;
+                      return (
+                        <button key={t.key} onClick={()=>setPenWinners(p=>({...p,[f.id]:t.key}))}
+                          style={{flex:1,padding:'6px 4px',borderRadius:8,border:`2px solid ${sel?'#f5c842':'rgba(255,255,255,0.1)'}`,background:sel?'rgba(245,200,66,0.15)':'rgba(255,255,255,0.04)',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+                          <span style={{fontSize:16}}>{t.flag}</span>
+                          <span style={{fontSize:9,fontWeight:700,color:sel?'#fde68a':'rgba(255,255,255,0.45)',textAlign:'center',lineHeight:1.2}}>{t.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {f.penalty_winner && (
+                    <div style={{marginTop:6,textAlign:'center',fontSize:11,fontWeight:700,color:(penWinners[f.id]||pred?.penalty_winner)===f.penalty_winner?'#4ade80':'rgba(255,255,255,0.3)'}}>
+                      {(penWinners[f.id]||pred?.penalty_winner)===f.penalty_winner?'✅ Correct pen pick! +1':'❌ Wrong pen pick'}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
