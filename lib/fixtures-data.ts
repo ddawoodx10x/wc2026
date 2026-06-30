@@ -143,14 +143,17 @@ export const USERS_LIST = [
   { name: 'Mana',           emoji: '🏔️' },
   { name: 'Abu 3meer',      emoji: '🦊' },
 ];
-
 export function calcPoints(predH: number, predA: number, realH: number, realA: number, predPenWinner?: string|null, realPenWinner?: string|null): number {
-  if (predH === realH && predA === realA) return 3;
-  const realResult = realH > realA ? 'H' : realH < realA ? 'A' : 'D';
-  const predResult = predH > predA ? 'H' : predH < predA ? 'A' : 'D';
-  let pts = realResult === predResult ? 2 : 1;
+  let pts: number;
+  if (predH === realH && predA === realA) pts = 3;
+  else {
+    const realResult = realH > realA ? 'H' : realH < realA ? 'A' : 'D';
+    const predResult = predH > predA ? 'H' : predH < predA ? 'A' : 'D';
+    pts = realResult === predResult ? 2 : 1;
+  }
   if (realPenWinner && predPenWinner && predPenWinner === realPenWinner) pts += 1;
   return pts;
+}
 }
 
 export function fmtKickoff(utc: string): string {
