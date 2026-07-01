@@ -6,19 +6,17 @@ export async function GET() {
   const sb = adminSupabase();
   const [usersRes, predsRes, fxRes] = await Promise.all([
     sb.from('users').select('id,username'),
-    sb.from('predictions').select('user_id,fixture_id,home_score,away_score'),
-    sb.from('fixtures').select('id,home_score,away_score,status'),
+    sb.from('predictions').select('user_id,fixture_id,home_score,away_score,penalty_winner'),
+    sb.from('fixtures').select('id,home_score,away_score,status,penalty_winner'),
   ]);
-
   const users = usersRes.data || [];
   const preds = predsRes.data || [];
   const fixtures = fxRes.data || [];
 
-  // Build score lookup
-  const scoreMap: Record<string, { h: number; a: number }> = {};
+  const scoreMap: Record<string, { h: number; a: number; penWinner: string|null }> = {};
   fixtures.forEach(f => {
     if (f.home_score !== null && f.away_score !== null) {
-      scoreMap[f.id] = { h: f.home_score, a: f.away_score };
+      scoreMap[f.id] = { h: f.home_score, a: f.away_score, penWinner: f.penalty_winner ?? null };
     }
   });
 
@@ -30,10 +28,10 @@ export async function GET() {
     userPreds.forEach(p => {
       const sc = scoreMap[p.fixture_id];
       if (!sc) return;
-      const pt = calcPoints(p.home_score, p.away_score, sc.h, sc.a);
+      const pt = calcPoints(p.home_score, p.away_score, sc.h, sc.a, p.penalty_winner ?? null, sc.penWinner);
       pts += pt;
-      if (pt === 3) exact++;
-      else if (pt === 2) correct++;
+      if (pt >= 3) exact++;
+      else if (pt >= 2) correct++;
       else wrong++;
     });
     return { id: user.id, name: ul.name, emoji: ul.emoji, pts, exact, correct, wrong, total: userPreds.length, rank: 0 };
